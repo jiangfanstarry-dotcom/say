@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>我的诗集</title>
+<style>
+:root {
+  --bg-color: #fffbe6;
+  --text-color: #333;
+  --box-bg: #fff;
+}
+
+body {
+  font-family: "KaiTi", serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px;
+  transition: background 0.3s, color 0.3s;
+}
+
+h1 {
+  margin-bottom: 20px;
+  font-size: 42px;
+}
+
+textarea {
+  width: 95%;
+  font-size: 22px;
+  padding: 20px;
+  border: 2px solid #d9b26d;
+  border-radius: 12px;
+  background: #fffef5;
+  resize: none;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+button {
+  margin-top: 15px;
+  font-size: 20px;
+  padding: 10px 24px;
+  cursor: pointer;
+  background-color: #ffb84d;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+  transition: background 0.2s;
+}
+
+button:hover {
+  background-color: #ffa31a;
+}
+
+.poem {
+  position: relative;
+  margin-top: 20px;
+  padding: 20px;
+  border-left: 5px solid #ff9900;
+  background: var(--box-bg);
+  width: 95%;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+  border-radius: 12px;
+}
+
+.poem time {
+  display: block;
+  font-size: 16px;
+  color: #888;
+  margin-bottom: 10px;
+}
+
+.delete-btn, .copy-btn {
+  position: absolute;
+  top: 12px;
+  font-size: 20px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: #888;
+}
+
+.delete-btn:hover { color: #d9534f; }
+.copy-btn:hover { color: #28a745; }
+
+/* 位置调整 */
+.copy-btn { left: 12px; }  /* 左上角 */
+.delete-btn { right: 12px; } /* 右上角 */
+
+.poem p {
+  font-size: 22px;
+  white-space: pre-wrap;
+  line-height: 1.6em;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.pagination button {
+  font-size: 18px;
+  padding: 8px 16px;
+  background-color: #ffd480;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  background-color: #f0e0c0;
+  cursor: not-allowed;
+}
+
+.night-mode {
+  --bg-color: #1f1f1f;
+  --text-color: #eee;
+  --box-bg: #2a2a2a;
+}
+</style>
+</head>
+<body>
+<h1>我的诗集</h1>
+<textarea id="poemInput" placeholder="写下今天的诗..."></textarea><br>
+<button onclick="savePoem()">保存</button>
+<button onclick="toggleNightMode()">🌙 夜间模式</button>
+
+<div id="poemList"></div>
+
+<div class="pagination">
+  <button id="prevBtn" onclick="changePage(-1)">上一页</button>
+  <span id="pageInfo"></span>
+  <button id="nextBtn" onclick="changePage(1)">下一页</button>
+</div>
+
+<script>
+let currentPage = 1;
+const poemsPerPage = 5;
+let isNightMode = false;
+
+// 保存诗
+function savePoem() {
+  const text = document.getElementById("poemInput").value.trim();
+  if (!text) return alert("写点什么吧！");
+  
+  const poems = JSON.parse(localStorage.getItem("poems") || "[]");
+  poems.push({
+    text,
+    time: new Date().toLocaleString()
+  });
+  localStorage.setItem("poems", JSON.stringify(poems));
+  document.getElementById("poemInput").value = "";
+  currentPage = 1;
+  displayPoems();
+}
+
+// 删除诗
+function deletePoem(index) {
+  const poems = JSON.parse(localStorage.getItem("poems") || "[]");
+  poems.splice(index, 1);
+  localStorage.setItem("poems", JSON.stringify(poems));
+  displayPoems();
+}
+
+// 复制诗
+function copyPoem(index) {
+  const poems = JSON.parse(localStorage.getItem("poems") || "[]");
+  const poem = poems[index];
+  const textToCopy = `${poem.time}\n${poem.text}`;
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    alert("已复制到剪贴板！");
+  });
+}
+
+// 翻页
+function changePage(delta) {
+  currentPage += delta;
+  displayPoems();
+}
+
+// 夜间模式
+function toggleNightMode() {
+  isNightMode = !isNightMode;
+  document.body.classList.toggle("night-mode", isNightMode);
+}
+
+// 显示诗
+function displayPoems() {
+  const poems = JSON.parse(localStorage.getItem("poems") || "[]");
+  const totalPages = Math.ceil(poems.length / poemsPerPage) || 1;
+
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const start = (currentPage - 1) * poemsPerPage;
+  const end = start + poemsPerPage;
+  const poemsToShow = poems.slice().reverse().slice(start, end);
+
+  const list = document.getElementById("poemList");
+  list.innerHTML = "";
+  poemsToShow.forEach((p, i) => {
+    const realIndex = poems.length - 1 - (start + i);
+    list.innerHTML += `
+      <div class="poem">
+        <button class="copy-btn" onclick="copyPoem(${realIndex})">📋</button>
+        <button class="delete-btn" onclick="deletePoem(${realIndex})">🗑</button>
+        <time>${p.time}</time>
+        <p>${p.text}</p>
+      </div>`;
+  });
+
+  document.getElementById("pageInfo").textContent = `第 ${currentPage} / ${totalPages} 页`;
+  document.getElementById("prevBtn").disabled = currentPage === 1;
+  document.getElementById("nextBtn").disabled = currentPage === totalPages;
+}
+
+// 初始显示
+displayPoems();
+</script>
+</body>
+</html>
